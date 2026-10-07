@@ -37,6 +37,10 @@ if ($vulnerabilityFile == 'impossible.php') {
 	$decodeURI = "";
 }
 
+$lowSecurityGuard = $vulnerabilityFile == 'low.php'
+	? "if (!['English', 'French', 'Spanish', 'German'].includes(lang)) { lang = 'English'; }"
+	: '';
+
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
 	<h1>Vulnerability: DOM Based Cross Site Scripting (XSS)</h1>
@@ -50,6 +54,7 @@ $page[ 'body' ] = <<<EOF
 				<script>
 					if (document.location.href.indexOf("default=") >= 0) {
 						var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
+						$lowSecurityGuard
 						document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
 						document.write("<option value='' disabled='disabled'>----</option>");
 					}
