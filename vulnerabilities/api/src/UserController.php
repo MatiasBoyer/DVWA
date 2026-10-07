@@ -221,7 +221,7 @@ class UserController
 		if (array_key_exists ("name", $input)) {
 			$this->data[$id]->name = $input['name'];
 		}
-		if (array_key_exists ("level", $input)) {
+		if ($this->version === 1 && array_key_exists ("level", $input)) {
 			$this->data[$id]->level = intval ($input['level']);
 		}
 		$response['status_code_header'] = 'HTTP/1.1 200 OK';

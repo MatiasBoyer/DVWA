@@ -5,10 +5,10 @@ require_once DVWA_WEB_PAGE_TO_ROOT . 'dvwa/includes/dvwaPage.inc.php';
 dvwaDatabaseConnect();
 
 /*
-On low and impossible, only the admin is allowed to change user details.
+Only the admin is allowed to change user details.
 */
 
-if ((dvwaSecurityLevelGet() == "low" || dvwaSecurityLevelGet() == "impossible") && dvwaCurrentUser() != "admin") {
+if (dvwaCurrentUser() != "admin") {
 	http_response_code(403);
 	print json_encode (array ("result" => "fail", "error" => "Access denied"));
 	exit;

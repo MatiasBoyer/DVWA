@@ -1,35 +1,63 @@
 <?php
 
-if( isset( $_GET[ 'Login' ] ) ) {
-	// Sanitise username input
-	$user = $_GET[ 'username' ];
-	$user = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $user ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+if (isset($_POST['Login'], $_POST['username'], $_POST['password']) &&
+	is_string($_POST['username']) && is_string($_POST['password'])) {
+	$user = $_POST['username'];
+	$pass_hash = md5($_POST['password']);
+	$connection = $GLOBALS['___mysqli_ston'];
+	$max_failures = 3;
+	$lockout_seconds = 15 * 60;
+	$authenticated = false;
+	$avatar = '';
 
-	// Sanitise password input
-	$pass = $_GET[ 'password' ];
-	$pass = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $pass ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-	$pass = md5( $pass );
+	try {
+		mysqli_begin_transaction($connection);
+		$stmt = mysqli_prepare($connection, 'SELECT password, avatar, failed_login, last_login FROM users WHERE user = ? LIMIT 1 FOR UPDATE');
+		mysqli_stmt_bind_param($stmt, 's', $user);
+		mysqli_stmt_execute($stmt);
+		$result = mysqli_stmt_get_result($stmt);
+		$row = $result ? mysqli_fetch_assoc($result) : null;
+		mysqli_stmt_close($stmt);
 
-	// Check the database
-	$query  = "SELECT * FROM `users` WHERE user = '$user' AND password = '$pass';";
-	$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+		if ($row) {
+			$failures = (int) $row['failed_login'];
+			$last_failure = !empty($row['last_login']) ? strtotime($row['last_login']) : false;
+			$locked = $failures >= $max_failures && $last_failure !== false &&
+				$last_failure + $lockout_seconds > time();
 
-	if( $result && mysqli_num_rows( $result ) == 1 ) {
-		// Get users details
-		$row    = mysqli_fetch_assoc( $result );
-		$avatar = $row["avatar"];
-
-		// Login successful
-		$html .= "<p>Welcome to the password protected area {$user}</p>";
-		$html .= "<img src=\"{$avatar}\" />";
+			if (!$locked && hash_equals((string) $row['password'], $pass_hash)) {
+				$authenticated = true;
+				$avatar = $row['avatar'];
+				$stmt = mysqli_prepare($connection, 'UPDATE users SET failed_login = 0, last_login = NOW() WHERE user = ?');
+				mysqli_stmt_bind_param($stmt, 's', $user);
+				mysqli_stmt_execute($stmt);
+				mysqli_stmt_close($stmt);
+			} elseif (!$locked) {
+				if ($failures >= $max_failures) {
+					$failures = 0;
+				}
+				$failures++;
+				$stmt = mysqli_prepare($connection, 'UPDATE users SET failed_login = ?, last_login = NOW() WHERE user = ?');
+				mysqli_stmt_bind_param($stmt, 'is', $failures, $user);
+				mysqli_stmt_execute($stmt);
+				mysqli_stmt_close($stmt);
+			}
+		}
+		mysqli_commit($connection);
+	} catch (Throwable $e) {
+		mysqli_rollback($connection);
+		$authenticated = false;
 	}
-	else {
-		// Login failed
-		sleep( 2 );
-		$html .= "<pre><br />Username and/or password incorrect.</pre>";
-	}
 
-	((is_null($___mysqli_res = mysqli_close($GLOBALS["___mysqli_ston"]))) ? false : $___mysqli_res);
+	if ($authenticated) {
+		$safe_user = htmlspecialchars($user, ENT_QUOTES, 'UTF-8');
+		$safe_avatar = htmlspecialchars((string) $avatar, ENT_QUOTES, 'UTF-8');
+		$html .= "<p>Welcome to the password protected area {$safe_user}</p>";
+		$html .= "<img src=\"{$safe_avatar}\" />";
+	} else {
+		sleep(2);
+		$html .= '<pre><br />Username and/or password incorrect.</pre>';
+	}
 }
 
 ?>

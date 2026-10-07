@@ -21,6 +21,7 @@ switch( dvwaSecurityLevelGet() ) {
 		break;
 	case 'medium':
 		$vulnerabilityFile = 'medium.php';
+		$method = 'POST';
 		break;
 	case 'high':
 		$vulnerabilityFile = 'high.php';
