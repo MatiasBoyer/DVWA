@@ -48,28 +48,45 @@ $html .= "<div class='log-container'>";
 $html .= "<h3>Access Log</h3>";
 
 // Get logs from the bac_log table
-$log_query = "SELECT l.id, l.user_id, l.target_id, l.ip_address, l.timestamp, 
-                 u1.user as accessor_user, u2.user as target_user 
-                 FROM bac_log l 
-                 LEFT JOIN users u1 ON l.user_id = u1.user_id 
-                 LEFT JOIN users u2 ON l.target_id = u2.user_id 
-                 ORDER BY l.timestamp DESC LIMIT 50";
+$log_filter = '';
+$log_params = array();
+if (dvwaSecurityLevelGet() == 'low' && dvwaCurrentUser() != 'admin') {
+    $log_filter = 'WHERE u1.user = :current_user';
+    $log_params[':current_user'] = dvwaCurrentUser();
+}
 
-$log_result = mysqli_query($GLOBALS["___mysqli_ston"], $log_query);
+$log_query = "SELECT l.id, l.user_id, l.target_id, l.ip_address, l.timestamp,
+                    u1.user AS accessor_user, u2.user AS target_user
+              FROM bac_log l
+              LEFT JOIN users u1 ON l.user_id = u1.user_id
+              LEFT JOIN users u2 ON l.target_id = u2.user_id
+              {$log_filter}
+              ORDER BY l.timestamp DESC LIMIT 50";
+$log_statement = $db->prepare($log_query);
+$log_statement->execute($log_params);
+$logs = $log_statement->fetchAll(PDO::FETCH_ASSOC);
 
-if ($log_result && mysqli_num_rows($log_result) > 0) {
+if ($logs) {
     $html .= "<table class='log-table'>";
     $html .= "<tr><th>ID</th><th>Accessor</th><th>Target</th><th>IP Address</th><th>Timestamp</th></tr>";
 
-    while ($log = mysqli_fetch_assoc($log_result)) {
-        $target_user = $log['target_user'] ? $log['target_user'] : 'Non-existent User (ID: ' . $log['target_id'] . ')';
+    foreach ($logs as $log) {
+        $id = htmlspecialchars((string) $log['id'], ENT_QUOTES, 'UTF-8');
+        $accessor = htmlspecialchars((string) $log['accessor_user'], ENT_QUOTES, 'UTF-8');
+        $user_id = htmlspecialchars((string) $log['user_id'], ENT_QUOTES, 'UTF-8');
+        $target_id = htmlspecialchars((string) $log['target_id'], ENT_QUOTES, 'UTF-8');
+        $target_user = $log['target_user']
+            ? htmlspecialchars($log['target_user'], ENT_QUOTES, 'UTF-8')
+            : "Non-existent User (ID: {$target_id})";
+        $ip = htmlspecialchars((string) $log['ip_address'], ENT_QUOTES, 'UTF-8');
+        $timestamp = htmlspecialchars((string) $log['timestamp'], ENT_QUOTES, 'UTF-8');
 
         $html .= "<tr>";
-        $html .= "<td>{$log['id']}</td>";
-        $html .= "<td>{$log['accessor_user']} (ID: {$log['user_id']})</td>";
+        $html .= "<td>{$id}</td>";
+        $html .= "<td>{$accessor} (ID: {$user_id})</td>";
         $html .= "<td>{$target_user}</td>";
-        $html .= "<td>{$log['ip_address']}</td>";
-        $html .= "<td>{$log['timestamp']}</td>";
+        $html .= "<td>{$ip}</td>";
+        $html .= "<td>{$timestamp}</td>";
         $html .= "</tr>";
     }
 

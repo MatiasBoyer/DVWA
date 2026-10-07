@@ -1,63 +1,38 @@
 <?php
 
-if( isset( $_COOKIE[ 'id' ] ) ) {
-	// Get input
-	$id = $_COOKIE[ 'id' ];
-	$exists = false;
+if (isset($_COOKIE['id'])) {
+    $rawId = $_COOKIE['id'];
+    $id = is_string($rawId)
+        ? filter_var($rawId, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)))
+        : false;
+    $exists = false;
 
-	switch ($_DVWA['SQLI_DB']) {
-		case MYSQL:
-			// Check database
-			$query  = "SELECT first_name, last_name FROM users WHERE user_id = '$id' LIMIT 1;";
-			try {
-				$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ); // Removed 'or die' to suppress mysql errors
-			} catch (Exception $e) {
-				$result = false;
-			}
+    if ($id !== false) {
+        switch ($_DVWA['SQLI_DB']) {
+            case MYSQL:
+                $query = $db->prepare('SELECT 1 FROM users WHERE user_id = :id LIMIT 1');
+                $query->bindValue(':id', $id, PDO::PARAM_INT);
+                $query->execute();
+                $exists = $query->fetchColumn() !== false;
+                break;
+            case SQLITE:
+                global $sqlite_db_connection;
+                $query = $sqlite_db_connection->prepare('SELECT 1 FROM users WHERE user_id = :id LIMIT 1');
+                $query->bindValue(':id', $id, SQLITE3_INTEGER);
+                $result = $query->execute();
+                $exists = $result !== false && $result->fetchArray(SQLITE3_NUM) !== false;
+                break;
+        }
+    }
 
-			$exists = false;
-			if ($result !== false) {
-				// Get results
-				try {
-					$exists = (mysqli_num_rows( $result ) > 0); // The '@' character suppresses errors
-				} catch(Exception $e) {
-					$exists = false;
-				}
-			}
-
-			((is_null($___mysqli_res = mysqli_close($GLOBALS["___mysqli_ston"]))) ? false : $___mysqli_res);
-			break;
-		case SQLITE:
-			global $sqlite_db_connection;
-
-			$query  = "SELECT first_name, last_name FROM users WHERE user_id = '$id' LIMIT 1;";
-			try {
-				$results = $sqlite_db_connection->query($query);
-				$row = $results->fetchArray();
-				$exists = $row !== false;
-			} catch(Exception $e) {
-				$exists = false;
-			}
-
-			break;
-	}
-
-	if ($exists) {
-		// Feedback for end user
-		$html .= '<pre>User ID exists in the database.</pre>';
-	}
-	else {
-		// Might sleep a random amount
-		if( rand( 0, 5 ) == 3 ) {
-			sleep( rand( 2, 4 ) );
-		}
-
-		// User wasn't found, so the page wasn't!
-		header( $_SERVER[ 'SERVER_PROTOCOL' ] . ' 404 Not Found' );
-
-		// Feedback for end user
-		$html .= '<pre>User ID is MISSING from the database.</pre>';
-	}
+    if ($exists) {
+        $html .= '<pre>User ID exists in the database.</pre>';
+    } else {
+        if ($id !== false) {
+            http_response_code(404);
+        }
+        $html .= '<pre>User ID is MISSING from the database.</pre>';
+    }
 }
 
 ?>

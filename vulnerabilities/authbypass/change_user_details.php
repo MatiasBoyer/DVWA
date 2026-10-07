@@ -2,16 +2,17 @@
 define( 'DVWA_WEB_PAGE_TO_ROOT', '../../' );
 require_once DVWA_WEB_PAGE_TO_ROOT . 'dvwa/includes/dvwaPage.inc.php';
 
-dvwaDatabaseConnect();
-
-/*
-On impossible only the admin is allowed to retrieve the data.
-*/
-
-if (dvwaSecurityLevelGet() == "impossible" && dvwaCurrentUser() != "admin") {
-	print json_encode (array ("result" => "fail", "error" => "Access denied"));
+dvwaPageStartup(array('authenticated'));
+header('Content-Type: application/json');
+if (dvwaCurrentUser() !== 'admin') {
+	http_response_code(403);
+	echo json_encode(array('result' => 'fail', 'error' => 'Access denied'));
 	exit;
 }
+
+$secureLevel = in_array(dvwaSecurityLevelGet(), array('high', 'impossible'), true);
+
+dvwaDatabaseConnect();
 
 if ($_SERVER['REQUEST_METHOD'] != "POST") {
 	$result = array (
@@ -44,8 +45,19 @@ try {
 	exit;
 }
 
-$query = "UPDATE users SET first_name = '" . $data->first_name . "', last_name = '" .  $data->surname . "' where user_id = " . $data->id . "";
-$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+if ($secureLevel) {
+	$id = filter_var($data->id ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+	if ($id === false || !is_string($data->first_name ?? null) || !is_string($data->surname ?? null)) {
+		http_response_code(400);
+		echo json_encode(array('result' => 'fail', 'error' => 'Invalid user details'));
+		exit;
+	}
+	$query = $db->prepare('UPDATE users SET first_name = :first_name, last_name = :surname WHERE user_id = :id');
+	$query->execute(array(':first_name' => $data->first_name, ':surname' => $data->surname, ':id' => $id));
+} else {
+	$query = "UPDATE users SET first_name = '" . $data->first_name . "', last_name = '" .  $data->surname . "' where user_id = " . $data->id . "";
+	$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+}
 
 print json_encode (array ("result" => "ok"));
 exit;

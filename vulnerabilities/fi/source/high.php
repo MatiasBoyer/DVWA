@@ -1,13 +1,20 @@
 <?php
 
-// The page we wish to display
-$file = $_GET[ 'page' ];
+$pages = [
+	'include.php' => __DIR__ . '/../include.php',
+	'file1.php' => __DIR__ . '/../file1.php',
+	'file2.php' => __DIR__ . '/../file2.php',
+	'file3.php' => __DIR__ . '/../file3.php',
+	'file4.php' => __DIR__ . '/../file4.php',
+];
 
-// Input validation
-if( !fnmatch( "file*", $file ) && $file != "include.php" ) {
-	// This isn't the page we want!
-	echo "ERROR: File not found!";
+$pageName = $_GET['page'] ?? 'include.php';
+if (!is_string($pageName) || !isset($pages[$pageName])) {
+	http_response_code(404);
+	echo 'ERROR: File not found!';
 	exit;
 }
+
+$file = $pages[$pageName];
 
 ?>
