@@ -1,110 +1,99 @@
 <?php
-function decrypt ($ciphertext, $key) {
-	$e = openssl_decrypt($ciphertext, 'aes-128-ecb', $key, OPENSSL_PKCS1_PADDING);
-	if ($e === false) {
-		throw new Exception ("Decryption failed");
+
+function encryptMediumToken($claims, $key) {
+	$nonce = random_bytes(12);
+	$ciphertext = openssl_encrypt(json_encode($claims), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
+	if ($ciphertext === false) {
+		throw new Exception('Token generation failed');
 	}
-	return $e;
+	return bin2hex($nonce . $tag . $ciphertext);
 }
 
-$key = "ik ben een aardbei";
+function decryptMediumToken($token, $key) {
+	if (!is_string($token) || strlen($token) <= 56 || strlen($token) % 2 !== 0 || !ctype_xdigit($token)) {
+		throw new Exception('Token is in wrong format');
+	}
 
-$errors = "";
-$success = "";
-$messages = "";
+	$encoded = hex2bin($token);
+	$nonce = substr($encoded, 0, 12);
+	$tag = substr($encoded, 12, 16);
+	$ciphertext = substr($encoded, 28);
+	$cleartext = openssl_decrypt($ciphertext, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
+	if ($cleartext === false) {
+		throw new Exception('Token authentication failed');
+	}
+	return $cleartext;
+}
 
-if ($_SERVER['REQUEST_METHOD'] == "POST") {
+if (!isset($_SESSION['crypto_medium_key']) || strlen($_SESSION['crypto_medium_key']) !== 32) {
+	$_SESSION['crypto_medium_key'] = random_bytes(32);
+}
+$key = $_SESSION['crypto_medium_key'];
+
+$errors = '';
+$success = '';
+$messages = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	try {
-		if (!array_key_exists ('token', $_POST)) {
-			throw new Exception ("No token passed");
-		} else {
-			$token = $_POST['token'];
-			if (strlen($token) % 32 != 0) {
-				throw new Exception ("Token is in wrong format");
-			} else {
-				$decrypted = decrypt(hex2bin ($token), $key);
-
-				$user = json_decode ($decrypted);
-				if ($user === null) {
-					throw new Exception ("Could not decode JSON object.");
-				}
-
-				if ($user->user == "sweep" && $user->ex > time() && $user->level == "admin") {
-					$success = "Welcome administrator Sweep";
-				} else {
-					$messages = "Login successful but not as the right user.";
-				}
-			}
+		if (!isset($_POST['token']) || !is_string($_POST['token'])) {
+			throw new Exception('No token passed');
 		}
-	} catch(Exception $e) {
+		$decrypted = decryptMediumToken(trim($_POST['token']), $key);
+		$user = json_decode($decrypted);
+		if (!is_object($user) || !isset($user->user, $user->ex, $user->level) ||
+			!is_string($user->user) || !is_int($user->ex) || !is_string($user->level)) {
+			throw new Exception('Could not decode token claims');
+		}
+
+		if ($user->ex <= time()) {
+			throw new Exception('Token expired');
+		}
+		if ($user->user === 'sweep' && $user->level === 'admin') {
+			$success = 'Welcome administrator Sweep';
+		} else {
+			$messages = 'Login successful but not as the right user.';
+		}
+	} catch (Exception $e) {
 		$errors = $e->getMessage();
 	}
 }
 
-$html = "
-		<p>
-		You have managed to get hold of three session tokens for an application you think is using poor cryptography to protect its secrets:
-		</p>
-		<p>
-		<strong>Sooty (admin), session expired</strong>
-		</p>
-		<p>
-<textarea style='width: 600px; height: 56px'>e287af752ed3f9601befd45726785bd9b85bb230876912bf3c66e50758b222d0837d1e6b16bfae07b776feb7afe576305aec34b41499579d3fb6acc8dc92fd5fcea8743c3b2904de83944d6b19733cdb48dd16048ed89967c250ab7f00629dba</textarea>
-		</p>
-		<p>
-		<strong>Sweep (user), session expired</strong>
-		</p>
-		<p>
-<textarea style='width: 600px; height: 56px'>3061837c4f9debaf19d4539bfa0074c1b85bb230876912bf3c66e50758b222d083f2d277d9e5fb9a951e74bee57c77a3caeb574f10f349ed839fbfd223903368873580b2e3e494ace1e9e8035f0e7e07</textarea>
-		</p>
-		<p>
-		<strong>Soo (user), session valid</strong>
-		</p>
-		<p>
-<textarea style='width: 600px; height: 56px'>5fec0b1c993f46c8bad8a5c8d9bb9698174d4b2659239bbc50646e14a70becef83f2d277d9e5fb9a951e74bee57c77a3c9acb1f268c06c5e760a9d728e081fab65e83b9f97e65cb7c7c4b8427bd44abc16daa00fd8cd0105c97449185be77ef5</textarea>
-		</p>
-		<p>
-		Based on the documentation, you know the format of the token is:
-		</p>
-		<pre><code>{
-    \"user\": \"example\",
-    \"ex\": 1723620372,
-    \"level\": \"user\",
-    \"bio\": \"blah\"
-}</code></pre>
-<p>
-You also spot this comment in the docs:
-</p>
-<blockquote><i>
-To ensure your security, we use aes-128-ecb throughout our application.
-</i></blockquote>
+$expired = time() - 3600;
+$sootyToken = encryptMediumToken(array('user' => 'sooty', 'ex' => $expired, 'level' => 'admin', 'bio' => 'Sooty'), $key);
+$sweepToken = encryptMediumToken(array('user' => 'sweep', 'ex' => $expired, 'level' => 'user', 'bio' => 'Sweep'), $key);
+$sooToken = encryptMediumToken(array('user' => 'soo', 'ex' => time() + 3600, 'level' => 'user', 'bio' => 'Soo'), $key);
 
+$html = "
+		<p>You have obtained three session tokens from the application:</p>
+		<p><strong>Sooty (admin), session expired</strong></p>
+		<p><textarea style='width: 600px; height: 56px'>{$sootyToken}</textarea></p>
+		<p><strong>Sweep (user), session expired</strong></p>
+		<p><textarea style='width: 600px; height: 56px'>{$sweepToken}</textarea></p>
+		<p><strong>Soo (user), session valid</strong></p>
+		<p><textarea style='width: 600px; height: 56px'>{$sooToken}</textarea></p>
+		<p>The tokens contain a user, an expiration time, a level and a bio. Their contents are encrypted and authenticated.</p>
 		<hr>
-		<p>
-		Manipulate the session tokens you have captured to log in as Sweep with admin privileges.
+		<p>Submit a token to check whether it grants administrator access as Sweep.</p>
 ";
 
-if ($errors != "") {
+if ($errors !== '') {
 	$html .= '<div class="warning">' . $errors . '</div>';
 }
-
-if ($messages != "") {
+if ($messages !== '') {
 	$html .= '<div class="nearly">' . $messages . '</div>';
 }
-
-if ($success != "") {
+if ($success !== '') {
 	$html .= '<div class="success">' . $success . '</div>';
 }
 
 $html .= "
-		<form name=\"ecb\" method='post' action=\"" . $_SERVER['PHP_SELF'] . "\">
+		<form name=\"ecb\" method='post' action=\"" . htmlspecialchars($_SERVER['PHP_SELF'], ENT_QUOTES, 'UTF-8') . "\">
 			<p>
-				<label for='token'>Token:</lable><br />
-<textarea style='width: 600px; height: 56px' id='token' name='token'></textarea>
+				<label for='token'>Token:</label><br />
+				<textarea style='width: 600px; height: 56px' id='token' name='token'></textarea>
 			</p>
-			<p>
-				<input type=\"submit\" value=\"Submit\">
-			</p>
+			<p><input type=\"submit\" value=\"Submit\"></p>
 		</form>
 ";
 ?>
