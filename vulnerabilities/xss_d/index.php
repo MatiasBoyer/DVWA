@@ -37,16 +37,7 @@ if ($vulnerabilityFile == 'impossible.php') {
 	$decodeURI = "";
 }
 
-$page[ 'body' ] = <<<EOF
-<div class="body_padded">
-	<h1>Vulnerability: DOM Based Cross Site Scripting (XSS)</h1>
-
-	<div class="vulnerable_code_area">
- 
- 		<p>Please choose a language:</p>
-
-		<form name="XSS" method="GET">
-			<select name="default">
+$optionsMarkup = <<<HTML
 				<script>
 					if (document.location.href.indexOf("default=") >= 0) {
 						var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
@@ -59,6 +50,29 @@ $page[ 'body' ] = <<<EOF
 					document.write("<option value='Spanish'>Spanish</option>");
 					document.write("<option value='German'>German</option>");
 				</script>
+HTML;
+
+if ($vulnerabilityFile == 'high.php') {
+	$optionsMarkup = '';
+	$allowedLanguages = array('English', 'French', 'Spanish', 'German');
+	$selectedLanguage = $_GET['default'] ?? 'English';
+	foreach ($allowedLanguages as $language) {
+		$selected = ($language === $selectedLanguage) ? ' selected' : '';
+		$optionsMarkup .= '<option value="' . $language . '"' . $selected . '>' . $language . '</option>';
+	}
+}
+
+$page[ 'body' ] = <<<EOF
+<div class="body_padded">
+	<h1>Vulnerability: DOM Based Cross Site Scripting (XSS)</h1>
+
+	<div class="vulnerable_code_area">
+
+		<p>Please choose a language:</p>
+
+		<form name="XSS" method="GET">
+			<select name="default">
+				{$optionsMarkup}
 			</select>
 			<input type="submit" value="Select" />
 		</form>
