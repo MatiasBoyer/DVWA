@@ -4,16 +4,17 @@ require_once DVWA_WEB_PAGE_TO_ROOT . 'dvwa/includes/dvwaPage.inc.php';
 
 dvwaPageStartup(array('authenticated'));
 header('Content-Type: application/json');
-dvwaDatabaseConnect();
 
 /*
 Only the admin is allowed to retrieve the data.
 */
-if (dvwaCurrentUser() != "admin") {
+if (dvwaCurrentUser() !== 'admin') {
 	http_response_code(403);
 	print json_encode (array ("result" => "fail", "error" => "Access denied"));
 	exit;
 }
+
+dvwaDatabaseConnect();
 
 $query  = "SELECT user_id, first_name, last_name FROM users";
 $result = mysqli_query($GLOBALS["___mysqli_ston"],  $query );
