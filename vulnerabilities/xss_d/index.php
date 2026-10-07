@@ -37,6 +37,29 @@ if ($vulnerabilityFile == 'impossible.php') {
 	$decodeURI = "";
 }
 
+$languageOptions = <<<HTML
+<script>
+	if (document.location.href.indexOf("default=") >= 0) {
+		var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
+		document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
+		document.write("<option value='' disabled='disabled'>----</option>");
+	}
+
+	document.write("<option value='English'>English</option>");
+	document.write("<option value='French'>French</option>");
+	document.write("<option value='Spanish'>Spanish</option>");
+	document.write("<option value='German'>German</option>");
+</script>
+HTML;
+
+if( $vulnerabilityFile === 'medium.php' ) {
+	$languageOptions = '';
+	foreach( $allowedLanguages as $language ) {
+		$selected = $language === $default ? ' selected' : '';
+		$languageOptions .= '<option value="' . $language . '"' . $selected . '>' . $language . '</option>';
+	}
+}
+
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
 	<h1>Vulnerability: DOM Based Cross Site Scripting (XSS)</h1>
@@ -47,18 +70,7 @@ $page[ 'body' ] = <<<EOF
 
 		<form name="XSS" method="GET">
 			<select name="default">
-				<script>
-					if (document.location.href.indexOf("default=") >= 0) {
-						var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
-						document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
-						document.write("<option value='' disabled='disabled'>----</option>");
-					}
-					    
-					document.write("<option value='English'>English</option>");
-					document.write("<option value='French'>French</option>");
-					document.write("<option value='Spanish'>Spanish</option>");
-					document.write("<option value='German'>German</option>");
-				</script>
+				$languageOptions
 			</select>
 			<input type="submit" value="Select" />
 		</form>
