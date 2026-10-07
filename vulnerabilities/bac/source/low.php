@@ -13,14 +13,18 @@ if (isset($_GET['action'], $_GET['user_id'])) {
 		$html .= '<p>Invalid user ID format. Please enter a number.</p>';
 	} else {
 		$id = (int) $requested_id;
-		$role = $current ? $current['role'] : '';
-
-		if (!$current || ($id !== $current_id && $role !== 'admin')) {
-			http_response_code(403);
+		if (!$current || $id !== $current_id) {
 			$html .= '<p>Access denied. You can only view your own profile.</p>';
 		} else {
-			$profile_query = $db->prepare('SELECT first_name, last_name, user_id, avatar FROM users WHERE user_id = :id LIMIT 1');
-			$profile_query->execute(array(':id' => $id));
+			$profile_query = $db->prepare(
+				"SELECT profile.first_name, profile.last_name, profile.user_id, profile.avatar
+				 FROM users AS profile
+				 JOIN users AS viewer ON viewer.user = :viewer
+				 WHERE profile.user_id = :id
+				   AND profile.user_id = viewer.user_id
+				 LIMIT 1"
+			);
+			$profile_query->execute(array(':viewer' => $current_user, ':id' => $id));
 			$profile = $profile_query->fetch(PDO::FETCH_ASSOC);
 
 			if ($profile) {
