@@ -1,10 +1,14 @@
 <?php
 
-// The page we wish to display
+// Only the pages offered by this exercise may be included.
+$allowedPages = [ 'include.php', 'file1.php', 'file2.php', 'file3.php' ];
+if( !isset( $_GET[ 'page' ] ) ) {
+	return;
+}
 $file = $_GET[ 'page' ];
 
-// Input validation
-$file = str_replace( array( "http://", "https://" ), "", $file );
-$file = str_replace( array( "../", "..\\" ), "", $file );
+if( !is_string( $file ) || !in_array( $file, $allowedPages, true ) ) {
+	exit( 'ERROR: File not found!' );
+}
 
 ?>

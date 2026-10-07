@@ -1,37 +1,39 @@
 <?php
 
-if( isset( $_GET[ 'Change' ] ) ) {
-	// Checks to see where the request came from
-	if( stripos( $_SERVER[ 'HTTP_REFERER' ] ,$_SERVER[ 'SERVER_NAME' ]) !== false ) {
-		// Get input
-		$pass_new  = $_GET[ 'password_new' ];
-		$pass_conf = $_GET[ 'password_conf' ];
+if( isset( $_POST[ 'Change' ] ) ) {
+	$submittedToken = $_POST[ 'user_token' ] ?? null;
+	checkToken( $submittedToken, $_SESSION[ 'session_token' ] ?? null, 'index.php' );
 
-		// Do the passwords match?
-		if( $pass_new == $pass_conf ) {
-			// They do!
-			$pass_new = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $pass_new ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
-			$pass_new = md5( $pass_new );
+	$currentPassword = $_POST[ 'password_current' ] ?? null;
+	$newPassword = $_POST[ 'password_new' ] ?? null;
+	$confirmation = $_POST[ 'password_conf' ] ?? null;
 
-			// Update the database
-			$current_user = dvwaCurrentUser();
-			$insert = "UPDATE `users` SET password = '$pass_new' WHERE user = '" . $current_user . "';";
-			$result = mysqli_query($GLOBALS["___mysqli_ston"],  $insert ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+	if( is_string( $currentPassword ) && is_string( $newPassword ) &&
+		is_string( $confirmation ) && $newPassword === $confirmation ) {
+		$currentUser = dvwaCurrentUser();
+		$currentHash = md5( $currentPassword );
+		$data = $db->prepare( 'SELECT password FROM users WHERE user = :user AND password = :password LIMIT 1;' );
+		$data->bindValue( ':user', $currentUser, PDO::PARAM_STR );
+		$data->bindValue( ':password', $currentHash, PDO::PARAM_STR );
+		$data->execute();
 
-			// Feedback for the user
-			$html .= "<pre>Password Changed.</pre>";
+		if( $data->fetch() ) {
+			$newHash = md5( $newPassword );
+			$data = $db->prepare( 'UPDATE users SET password = :password WHERE user = :user;' );
+			$data->bindValue( ':password', $newHash, PDO::PARAM_STR );
+			$data->bindValue( ':user', $currentUser, PDO::PARAM_STR );
+			$data->execute();
+			$html .= '<pre>Password Changed.</pre>';
 		}
 		else {
-			// Issue with passwords matching
-			$html .= "<pre>Passwords did not match.</pre>";
+			$html .= '<pre>Passwords did not match or current password incorrect.</pre>';
 		}
 	}
 	else {
-		// Didn't come from a trusted source
-		$html .= "<pre>That request didn't look correct.</pre>";
+		$html .= '<pre>Passwords did not match or current password incorrect.</pre>';
 	}
-
-	((is_null($___mysqli_res = mysqli_close($GLOBALS["___mysqli_ston"]))) ? false : $___mysqli_res);
 }
+
+$_SESSION[ 'session_token' ] = bin2hex( random_bytes( 32 ) );
 
 ?>

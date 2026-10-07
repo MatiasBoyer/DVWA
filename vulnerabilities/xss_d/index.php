@@ -31,15 +31,39 @@ switch( dvwaSecurityLevelGet() ) {
 
 require_once DVWA_WEB_PAGE_TO_ROOT . "vulnerabilities/xss_d/source/{$vulnerabilityFile}";
 
+$lowSecurityGuard = $vulnerabilityFile == 'low.php'
+	? "if (!['English', 'French', 'Spanish', 'German'].includes(lang)) { lang = 'English'; }"
+	: '';
+
 # For the impossible level, don't decode the querystring
 $decodeURI = "decodeURI";
 if ($vulnerabilityFile == 'impossible.php') {
 	$decodeURI = "";
 }
 
-$lowSecurityGuard = $vulnerabilityFile == 'low.php'
-	? "if (!['English', 'French', 'Spanish', 'German'].includes(lang)) { lang = 'English'; }"
-	: '';
+$languageOptions = <<<HTML
+<script>
+	if (document.location.href.indexOf("default=") >= 0) {
+		var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
+		$lowSecurityGuard
+		document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
+		document.write("<option value='' disabled='disabled'>----</option>");
+	}
+
+	document.write("<option value='English'>English</option>");
+	document.write("<option value='French'>French</option>");
+	document.write("<option value='Spanish'>Spanish</option>");
+	document.write("<option value='German'>German</option>");
+</script>
+HTML;
+
+if( $vulnerabilityFile === 'medium.php' ) {
+	$languageOptions = '';
+	foreach( $allowedLanguages as $language ) {
+		$selected = $language === $default ? ' selected' : '';
+		$languageOptions .= '<option value="' . $language . '"' . $selected . '>' . $language . '</option>';
+	}
+}
 
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
@@ -51,19 +75,7 @@ $page[ 'body' ] = <<<EOF
 
 		<form name="XSS" method="GET">
 			<select name="default">
-				<script>
-					if (document.location.href.indexOf("default=") >= 0) {
-						var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
-						$lowSecurityGuard
-						document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
-						document.write("<option value='' disabled='disabled'>----</option>");
-					}
-					    
-					document.write("<option value='English'>English</option>");
-					document.write("<option value='French'>French</option>");
-					document.write("<option value='Spanish'>Spanish</option>");
-					document.write("<option value='German'>German</option>");
-				</script>
+				$languageOptions
 			</select>
 			<input type="submit" value="Select" />
 		</form>

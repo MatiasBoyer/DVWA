@@ -1,20 +1,13 @@
 <?php
 
-$headerCSP = "Content-Security-Policy: script-src 'self' 'unsafe-inline' 'nonce-TmV2ZXIgZ29pbmcgdG8gZ2l2ZSB5b3UgdXA=';";
+$headerCSP = "Content-Security-Policy: script-src 'self'; object-src 'none'; base-uri 'self';";
 
 header($headerCSP);
 
-// Disable XSS protections so that inline alert boxes will work
-header ("X-XSS-Protection: 0");
-
-# <script nonce="TmV2ZXIgZ29pbmcgdG8gZ2l2ZSB5b3UgdXA=">alert(1)</script>
-
 ?>
 <?php
-if (isset ($_POST['include'])) {
-$page[ 'body' ] .= "
-	" . $_POST['include'] . "
-";
+if (isset ($_POST['include']) && is_string($_POST['include'])) {
+	$page[ 'body' ] .= '<p>' . htmlspecialchars($_POST['include'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
 }
 $page[ 'body' ] .= '
 <form name="csp" method="POST">

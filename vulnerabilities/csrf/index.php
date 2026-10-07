@@ -31,6 +31,8 @@ switch( dvwaSecurityLevelGet() ) {
 
 require_once DVWA_WEB_PAGE_TO_ROOT . "vulnerabilities/csrf/source/{$vulnerabilityFile}";
 
+$formMethod = in_array( $vulnerabilityFile, [ 'low.php', 'medium.php' ], true ) ? 'POST' : 'GET';
+
 $testCredentials = "
  <button onclick=\"testFunct()\">Test Credentials</button><br /><br />
  <script>
@@ -40,8 +42,6 @@ function testFunct() {
 }
 </script>
 ";
-
-$method = $vulnerabilityFile == 'low.php' ? 'POST' : 'GET';
 
 $page[ 'body' ] .= "
 <div class=\"body_padded\">
@@ -53,9 +53,9 @@ $page[ 'body' ] .= "
 		<div id=\"test_credentials\">
 			".$testCredentials ."
 		</div><br />
-		<form action=\"#\" method=\"{$method}\">";
+		<form action=\"#\" method=\"{$formMethod}\">";
 
-if( $vulnerabilityFile == 'impossible.php' ) {
+if( $vulnerabilityFile == 'medium.php' || $vulnerabilityFile == 'impossible.php' ) {
 	$page[ 'body' ] .= "
 			Current password:<br />
 			<input type=\"password\" AUTOCOMPLETE=\"off\" name=\"password_current\"><br />";
@@ -69,7 +69,7 @@ $page[ 'body' ] .= "
 			<br />
 			<input type=\"submit\" value=\"Change\" name=\"Change\">\n";
 
-if( $vulnerabilityFile == 'low.php' || $vulnerabilityFile == 'high.php' || $vulnerabilityFile == 'impossible.php' )
+if( in_array( $vulnerabilityFile, [ 'low.php', 'medium.php', 'high.php', 'impossible.php' ], true ) )
 	$page[ 'body' ] .= "			" . tokenField();
 
 $page[ 'body' ] .= "

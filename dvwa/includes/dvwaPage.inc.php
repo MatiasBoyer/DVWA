@@ -614,9 +614,9 @@ function dvwaGuestbook() {
 	$guestbook = '';
 
 	while( $row = mysqli_fetch_row( $result ) ) {
-		if( in_array( dvwaSecurityLevelGet(), array( 'low', 'impossible' ), true ) ) {
-			$name    = htmlspecialchars( $row[0], ENT_QUOTES, 'UTF-8' );
-			$comment = htmlspecialchars( $row[1], ENT_QUOTES, 'UTF-8' );
+		if( in_array( dvwaSecurityLevelGet(), [ 'low', 'medium', 'impossible' ], true ) ) {
+			$name    = htmlspecialchars( $row[0], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+			$comment = htmlspecialchars( $row[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 		}
 		else {
 			$name    = $row[0];
