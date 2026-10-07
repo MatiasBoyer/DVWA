@@ -23,6 +23,7 @@ switch( dvwaSecurityLevelGet() ) {
 		break;
 	case 'high':
 		$vulnerabilityFile = 'high.php';
+		$method = 'POST';
 		break;
 	default:
 		$vulnerabilityFile = 'impossible.php';
