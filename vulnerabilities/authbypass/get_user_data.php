@@ -9,7 +9,6 @@ header('Content-Type: application/json');
 Only the admin is allowed to retrieve the data.
 */
 if (dvwaCurrentUser() !== 'admin') {
-	http_response_code(403);
 	print json_encode (array ("result" => "fail", "error" => "Access denied"));
 	exit;
 }

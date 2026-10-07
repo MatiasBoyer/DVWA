@@ -13,8 +13,9 @@ if (!array_key_exists('page', $_GET)) {
 
 $pageName = $_GET['page'];
 if (!is_string($pageName) || !in_array($pageName, $allowedPages, true)) {
-	echo 'ERROR: File not found!';
-	exit;
+	$page['body'] .= '<p>ERROR: File not found!</p>';
+	$file = 'include.php';
+	return;
 }
 
 $file = $pageName;
