@@ -1,7 +1,7 @@
 <?php
 
 // The page we wish to display
-$file = $_GET[ 'page' ] ?? null;
+$file = $_GET[ 'page' ] ?? 'include.php';
 
 // Only allow include.php or file{1..3}.php
 $configFileNames = [
