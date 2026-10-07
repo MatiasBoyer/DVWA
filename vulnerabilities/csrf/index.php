@@ -31,7 +31,7 @@ switch( dvwaSecurityLevelGet() ) {
 
 require_once DVWA_WEB_PAGE_TO_ROOT . "vulnerabilities/csrf/source/{$vulnerabilityFile}";
 
-$formMethod = in_array( $vulnerabilityFile, [ 'low.php', 'medium.php' ], true ) ? 'POST' : 'GET';
+$formMethod = in_array( $vulnerabilityFile, [ 'low.php', 'medium.php', 'high.php' ], true ) ? 'POST' : 'GET';
 
 $testCredentials = "
  <button onclick=\"testFunct()\">Test Credentials</button><br /><br />
@@ -55,7 +55,7 @@ $page[ 'body' ] .= "
 		</div><br />
 		<form action=\"#\" method=\"{$formMethod}\">";
 
-if( $vulnerabilityFile == 'medium.php' || $vulnerabilityFile == 'impossible.php' ) {
+if( in_array( $vulnerabilityFile, [ 'medium.php', 'high.php', 'impossible.php' ], true ) ) {
 	$page[ 'body' ] .= "
 			Current password:<br />
 			<input type=\"password\" AUTOCOMPLETE=\"off\" name=\"password_current\"><br />";

@@ -13,6 +13,11 @@ $page[ 'source_button' ] = 'javascript';
 
 dvwaDatabaseConnect();
 
+$highSecurity = dvwaSecurityLevelGet() === 'high';
+if ($highSecurity && !isset($_SESSION['javascript_high_token'])) {
+	$_SESSION['javascript_high_token'] = bin2hex(random_bytes(32));
+}
+
 $vulnerabilityFile = '';
 switch( dvwaSecurityLevelGet() ) {
 	case 'low':
@@ -63,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 					$_SESSION['javascript_medium_token'] = bin2hex( random_bytes( 32 ) );
 					break;
 				case 'high':
-					if ($token == hash("sha256", hash("sha256", "XX" . strrev("success")) . "ZZ")) {
+					if (is_string($token) && hash_equals($_SESSION['javascript_high_token'], $token)) {
 						$message = "<p style='color:red'>Well done!</p>";
 					} else {
 						$message = "<p>Invalid token.</p>";
@@ -79,11 +84,24 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 	} else {
 		$message = "<p>Missing phrase or token.</p>";
 	}
+	if ($highSecurity) {
+		$_SESSION['javascript_high_token'] = bin2hex(random_bytes(32));
+	}
 }
 
-$lowToken = dvwaSecurityLevelGet() == 'low'
-	? htmlspecialchars($_SESSION['javascript_token'], ENT_QUOTES, 'UTF-8')
-	: '';
+$tokenValue = '';
+switch( $vulnerabilityFile ) {
+	case 'low.php':
+		$tokenValue = $_SESSION[ 'javascript_token' ];
+		break;
+	case 'medium.php':
+		$tokenValue = $_SESSION[ 'javascript_medium_token' ];
+		break;
+	case 'high.php':
+		$tokenValue = $_SESSION[ 'javascript_high_token' ];
+		break;
+}
+$tokenValue = htmlspecialchars( $tokenValue, ENT_QUOTES, 'UTF-8' );
 
 if ( dvwaSecurityLevelGet() == "impossible" ) {
 $page[ 'body' ] = <<<EOF
@@ -96,9 +114,6 @@ $page[ 'body' ] = <<<EOF
 	</p>
 EOF;
 } else {
-$tokenValue = $vulnerabilityFile === 'medium.php'
-	? htmlspecialchars( $_SESSION[ 'javascript_medium_token' ], ENT_QUOTES, 'UTF-8' )
-	: $lowToken;
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
 	<h1>Vulnerability: JavaScript Attacks</h1>

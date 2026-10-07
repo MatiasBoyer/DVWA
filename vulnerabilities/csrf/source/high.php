@@ -1,69 +1,61 @@
 <?php
 
 $change = false;
-$request_type = "html";
-$return_message = "Request Failed";
+$request_type = 'html';
+$return_message = 'Request Failed';
 
-if ($_SERVER['REQUEST_METHOD'] == "POST" && array_key_exists ("CONTENT_TYPE", $_SERVER) && $_SERVER['CONTENT_TYPE'] == "application/json") {
-	$data = json_decode(file_get_contents('php://input'), true);
-	$request_type = "json";
-	if (array_key_exists("HTTP_USER_TOKEN", $_SERVER) &&
-		array_key_exists("password_new", $data) &&
-		array_key_exists("password_conf", $data) &&
-		array_key_exists("Change", $data)) {
-		$token = $_SERVER['HTTP_USER_TOKEN'];
-		$pass_new = $data["password_new"];
-		$pass_conf = $data["password_conf"];
-		$change = true;
-	}
-} else {
-	if (array_key_exists("user_token", $_REQUEST) &&
-		array_key_exists("password_new", $_REQUEST) &&
-		array_key_exists("password_conf", $_REQUEST) &&
-		array_key_exists("Change", $_REQUEST)) {
-		$token = $_REQUEST["user_token"];
-		$pass_new = $_REQUEST["password_new"];
-		$pass_conf = $_REQUEST["password_conf"];
-		$change = true;
-	}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $content_type = strtolower(trim(explode(';', $_SERVER['CONTENT_TYPE'] ?? '')[0]));
+    if ($content_type === 'application/json') {
+        $request_type = 'json';
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (is_array($data) && isset($data['password_current'], $data['password_new'], $data['password_conf'], $data['Change'])) {
+            $token = $_SERVER['HTTP_USER_TOKEN'] ?? null;
+            $pass_current = $data['password_current'];
+            $pass_new = $data['password_new'];
+            $pass_conf = $data['password_conf'];
+            $change = true;
+        }
+    } elseif (isset($_POST['user_token'], $_POST['password_current'], $_POST['password_new'], $_POST['password_conf'], $_POST['Change'])) {
+        $token = $_POST['user_token'];
+        $pass_current = $_POST['password_current'];
+        $pass_new = $_POST['password_new'];
+        $pass_conf = $_POST['password_conf'];
+        $change = true;
+    }
 }
 
 if ($change) {
-	// Check Anti-CSRF token
-	checkToken( $token, $_SESSION[ 'session_token' ], 'index.php' );
+    checkToken($token, $_SESSION['session_token'] ?? null, 'index.php');
 
-	// Do the passwords match?
-	if( $pass_new == $pass_conf ) {
-		// They do!
-		$pass_new = mysqli_real_escape_string ($GLOBALS["___mysqli_ston"], $pass_new);
-		$pass_new = md5( $pass_new );
+    if (is_string($pass_current) && is_string($pass_new) && is_string($pass_conf) && $pass_new === $pass_conf) {
+        $current_user = dvwaCurrentUser();
+        $query = $db->prepare('SELECT password FROM users WHERE user = :user LIMIT 1');
+        $query->execute(array(':user' => $current_user));
+        $stored_password = $query->fetchColumn();
 
-		// Update the database
-		$current_user = dvwaCurrentUser();
-		$insert = "UPDATE `users` SET password = '" . $pass_new . "' WHERE user = '" . $current_user . "';";
-		$result = mysqli_query($GLOBALS["___mysqli_ston"],  $insert );
-
-		// Feedback for the user
-		$return_message = "Password Changed.";
-	}
-	else {
-		// Issue with passwords matching
-		$return_message = "Passwords did not match.";
-	}
-
-	mysqli_close($GLOBALS["___mysqli_ston"]);
-
-	if ($request_type == "json") {
-		generateSessionToken();
-		header ("Content-Type: application/json");
-		print json_encode (array("Message" =>$return_message));
-		exit;
-	} else {
-		$html .= "<pre>" . $return_message . "</pre>";
-	}
+        if (is_string($stored_password) && hash_equals($stored_password, md5($pass_current))) {
+            $update = $db->prepare('UPDATE users SET password = :password WHERE user = :user');
+            $update->execute(array(':password' => md5($pass_new), ':user' => $current_user));
+            $return_message = 'Password Changed.';
+        } else {
+            $return_message = 'Current password incorrect.';
+        }
+    } else {
+        $return_message = 'Passwords did not match.';
+    }
 }
 
-// Generate Anti-CSRF token
 generateSessionToken();
+
+if ($request_type === 'json') {
+    header('Content-Type: application/json');
+    print json_encode(array('Message' => $return_message));
+    exit;
+}
+
+if ($change) {
+    $html .= '<pre>' . $return_message . '</pre>';
+}
 
 ?>
