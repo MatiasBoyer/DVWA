@@ -41,6 +41,8 @@ function testFunct() {
 </script>
 ";
 
+$method = $vulnerabilityFile == 'low.php' ? 'POST' : 'GET';
+
 $page[ 'body' ] .= "
 <div class=\"body_padded\">
 	<h1>Vulnerability: Cross Site Request Forgery (CSRF)</h1>
@@ -51,7 +53,7 @@ $page[ 'body' ] .= "
 		<div id=\"test_credentials\">
 			".$testCredentials ."
 		</div><br />
-		<form action=\"#\" method=\"GET\">";
+		<form action=\"#\" method=\"{$method}\">";
 
 if( $vulnerabilityFile == 'impossible.php' ) {
 	$page[ 'body' ] .= "
@@ -67,7 +69,7 @@ $page[ 'body' ] .= "
 			<br />
 			<input type=\"submit\" value=\"Change\" name=\"Change\">\n";
 
-if( $vulnerabilityFile == 'high.php' || $vulnerabilityFile == 'impossible.php' )
+if( $vulnerabilityFile == 'low.php' || $vulnerabilityFile == 'high.php' || $vulnerabilityFile == 'impossible.php' )
 	$page[ 'body' ] .= "			" . tokenField();
 
 $page[ 'body' ] .= "
