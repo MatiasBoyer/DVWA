@@ -82,10 +82,14 @@ class HealthController
 	
 	private function checkConnectivity() {
 		$input = (array) json_decode(file_get_contents('php://input'), TRUE);
-		if (array_key_exists ("target", $input)) {
-			$target = $input['target'];
-
-			exec ("ping -c 4 " . $target, $output, $ret_var);
+		$target = $input['target'] ?? null;
+		$validTarget = is_string($target) && strlen($target) <= 253 && (
+			filter_var($target, FILTER_VALIDATE_IP) !== false ||
+			filter_var($target, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false
+		);
+		if ($validTarget) {
+			// Validate the host and quote it as a single shell argument.
+			exec('ping -c 4 ' . escapeshellarg($target), $output, $ret_var);
 
 			if ($ret_var == 0) {
 				$response['status_code_header'] = 'HTTP/1.1 200 OK';
@@ -95,8 +99,8 @@ class HealthController
 				$response['body'] = json_encode (array ("status" => "Connection failed"));
 			}
 		} else {
-			$response['status_code_header'] = 'HTTP/1.1 500 Internal Server Error';
-			$response['body'] = json_encode (array ("status" => "Target not specified"));
+			$response['status_code_header'] = 'HTTP/1.1 400 Bad Request';
+			$response['body'] = json_encode(array("status" => "Invalid target"));
 		}
 		return $response;
 	}
@@ -197,4 +201,3 @@ final class Words {
     #[OAT\Property(example: "Hello World")]
     public string $words;
 }
-
