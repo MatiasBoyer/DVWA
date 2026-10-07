@@ -135,10 +135,6 @@ function dvwaPageStartup( $pActions ) {
 			dvwaRedirect( DVWA_WEB_PAGE_TO_ROOT . 'login.php' );
 		}
 	}
-	if (in_array('admin', $pActions, true) && dvwaCurrentUser() !== 'admin') {
-		http_response_code(403);
-		exit('Unauthorised');
-	}
 }
 
 function dvwaLogin( $pUsername ) {
