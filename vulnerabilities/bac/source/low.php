@@ -5,6 +5,7 @@ $current_user = dvwaCurrentUser();
 $user_query = $db->prepare('SELECT user_id, role FROM users WHERE user = :user LIMIT 1');
 $user_query->execute(array(':user' => $current_user));
 $current = $user_query->fetch(PDO::FETCH_ASSOC);
+$current_id = $current ? (int) $current['user_id'] : 0;
 
 if (isset($_GET['action'], $_GET['user_id'])) {
 	$requested_id = $_GET['user_id'];
@@ -12,9 +13,9 @@ if (isset($_GET['action'], $_GET['user_id'])) {
 		$html .= '<p>Invalid user ID format. Please enter a number.</p>';
 	} else {
 		$id = (int) $requested_id;
-		$current_id = $current ? (int) $current['user_id'] : 0;
+		$role = $current ? $current['role'] : '';
 
-		if (!$current || $id !== $current_id) {
+		if (!$current || ($id !== $current_id && $role !== 'admin')) {
 			http_response_code(403);
 			$html .= '<p>Access denied. You can only view your own profile.</p>';
 		} else {

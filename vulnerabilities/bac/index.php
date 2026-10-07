@@ -51,7 +51,7 @@ $html .= "<h3>Access Log</h3>";
 $log_filter = '';
 $log_params = array();
 if (dvwaSecurityLevelGet() == 'low' && dvwaCurrentUser() != 'admin') {
-    $log_filter = 'WHERE u1.user = :current_user';
+    $log_filter = 'WHERE u1.user = :current_user AND l.target_id = l.user_id';
     $log_params[':current_user'] = dvwaCurrentUser();
 }
 
@@ -117,6 +117,9 @@ switch ($securityLevel) {
 
 require_once DVWA_WEB_PAGE_TO_ROOT . "vulnerabilities/bac/source/{$vulnerabilityFile}";
 
+// On the low level, the form should open the signed-in user's profile by default.
+$profile_form_user_id = $securityLevel === 'low' && isset($current_id) ? (int) $current_id : 1;
+
 // Add CSS for logs
 $page['body'] .= "
 <style>
@@ -164,7 +167,7 @@ $page['body'] .= "
         <form action=\"#\" method=\"GET\">
             <p>
                 View user profile by ID: 
-                <input type=\"text\" name=\"user_id\" value=\"1\">
+                <input type=\"text\" name=\"user_id\" value=\"{$profile_form_user_id}\">
                 <input type=\"submit\" value=\"View Profile\" name=\"action\">
             </p>
         </form>

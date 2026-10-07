@@ -2,20 +2,26 @@
 
 $target = $_GET['redirect'] ?? null;
 
+if ($target === 'info.php?id=1') {
+	header('Location: info.php?id=1', true, 302);
+	exit;
+}
+
+if ($target === 'info.php?id=2') {
+	header('Location: info.php?id=2', true, 302);
+	exit;
+}
+
 if ($target === null || $target === '') {
 	http_response_code(500);
-	exit('<p>Missing redirect target.</p>');
+	echo '<p>Missing redirect target.</p>';
+	exit;
 }
 
 if (is_string($target) && preg_match('/https?:\/\//i', $target)) {
-	http_response_code(500);
-	exit('<p>Absolute URLs not allowed.</p>');
+	echo '<p>Absolute URLs not allowed.</p>';
+	exit;
 }
 
-if (!(is_string($target) && preg_match('/\Ainfo\.php\?id=[0-9]+\z/D', $target) === 1)) {
-	http_response_code(400);
-	exit('Unknown redirect target.');
-}
-
-header('Location: ' . $target, true, 302);
+echo '<p>Unknown redirect target.</p>';
 exit;
