@@ -41,6 +41,8 @@ function testFunct() {
 </script>
 ";
 
+$method = ($vulnerabilityFile == 'high.php') ? 'POST' : 'GET';
+
 $page[ 'body' ] .= "
 <div class=\"body_padded\">
 	<h1>Vulnerability: Cross Site Request Forgery (CSRF)</h1>
@@ -51,9 +53,9 @@ $page[ 'body' ] .= "
 		<div id=\"test_credentials\">
 			".$testCredentials ."
 		</div><br />
-		<form action=\"#\" method=\"GET\">";
+		<form action=\"#\" method=\"{$method}\">";
 
-if( $vulnerabilityFile == 'impossible.php' ) {
+if( $vulnerabilityFile == 'high.php' || $vulnerabilityFile == 'impossible.php' ) {
 	$page[ 'body' ] .= "
 			Current password:<br />
 			<input type=\"password\" AUTOCOMPLETE=\"off\" name=\"password_current\"><br />";

@@ -42,18 +42,17 @@
 
 		<h4>Bonus Challenge</h4>
 		<p>At this level, the site will also accept a change password request as a JSON object in the following format:</p>
-		<pre><code>{"password_new":"a","password_conf":"a","Change":1}</code></pre>
-		<p>When done this way, the CSRF token must be passed as a header named <code>user-token</code>.</p>
+		<pre><code>{"password_current":"old","password_new":"a","password_conf":"a","Change":1}</code></pre>
+		<p>When done this way, include the current password and pass the CSRF token as a header named <code>user-token</code>.</p>
 
 		<p>Here is a sample request:</p>
 		<pre><code><span class="spoiler">POST /vulnerabilities/csrf/ HTTP/1.1
 Host: dvwa.test
-Content-Length: 51
 Content-Type: application/json
 Cookie: PHPSESSID=0hr9ikmo07thlcvjv3u3pkfeni; security=high
 user-token: 026d0caed93471b507ed460ebddbd096
 
-{"password_new":"a","password_conf":"a","Change":1}</span></pre></code>
+{"password_current":"old","password_new":"a","password_conf":"a","Change":1}</span></pre></code>
 
 		<br />
 
