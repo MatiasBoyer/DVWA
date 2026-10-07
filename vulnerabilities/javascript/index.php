@@ -29,6 +29,10 @@ switch( dvwaSecurityLevelGet() ) {
 		break;
 }
 
+if( $vulnerabilityFile === 'medium.php' && !isset( $_SESSION[ 'javascript_medium_token' ] ) ) {
+	$_SESSION[ 'javascript_medium_token' ] = bin2hex( random_bytes( 32 ) );
+}
+
 $message = "";
 // Check what was sent in to see if it was what was expected
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
@@ -47,11 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 					}
 					break;
 				case 'medium':
-					if ($token == strrev("XXsuccessXX")) {
+					if (is_string($token) && hash_equals($_SESSION['javascript_medium_token'], $token)) {
 						$message = "<p style='color:red'>Well done!</p>";
 					} else {
 						$message = "<p>Invalid token.</p>";
 					}
+					$_SESSION['javascript_medium_token'] = bin2hex( random_bytes( 32 ) );
 					break;
 				case 'high':
 					if ($token == hash("sha256", hash("sha256", "XX" . strrev("success")) . "ZZ")) {
@@ -83,6 +88,7 @@ $page[ 'body' ] = <<<EOF
 	</p>
 EOF;
 } else {
+$tokenValue = $vulnerabilityFile === 'medium.php' ? $_SESSION[ 'javascript_medium_token' ] : '';
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
 	<h1>Vulnerability: JavaScript Attacks</h1>
@@ -95,7 +101,7 @@ $page[ 'body' ] = <<<EOF
 	$message
 
 	<form name="low_js" method="post">
-		<input type="hidden" name="token" value="" id="token" />
+		<input type="hidden" name="token" value="$tokenValue" id="token" />
 		<label for="phrase">Phrase</label> <input type="text" name="phrase" value="ChangeMe" id="phrase" />
 		<input type="submit" id="send" name="send" value="Submit" />
 	</form>
